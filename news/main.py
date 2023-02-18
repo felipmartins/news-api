@@ -52,28 +52,25 @@ async def health():
 
 
 @app.get("/get_news")
-async def evaluation(
-    category: str | None = None, page: int = Query(default=1, gt=0)
-):
+async def evaluation(category: str | None = None, page: int = Query(default=1, gt=0)):
     with get_session() as session:
         if category:
-            news = session.exec(
-                select(News).where(News.category == category.lower())
-            ).all()
+            query = select(News).where(News.category == category.lower())
         else:
-            news = session.exec(select(News)).all()
+            query = select(News)
 
-    full_pages, extra = divmod(len(news), 12)
-    total_pages = full_pages + bool(extra)
+        number_of_news = len(session.exec(query).all())
+        page_news = session.exec(query.offset(12 * (page - 1)).limit(12)).all()
+
+        full_pages, extra = divmod(number_of_news, 12)
+        total_pages = full_pages + bool(extra)
 
     if page == total_pages:
-        return create_response(
-            news[12 * (page - 1):], category, page, total_pages
-        )
+        return create_response(page_news, category, page, total_pages)
 
     if page < total_pages:
         return create_response(
-            news[12 * (page - 1): 12 * page],
+            page_news,
             category,
             page,
             total_pages,
@@ -81,5 +78,7 @@ async def evaluation(
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"page {page} does not exist",
+        detail=f"page {page} does not exist"
+        if not category
+        else f"page {page} does not exist for selected filter: {category}",
     )
