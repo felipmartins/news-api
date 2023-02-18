@@ -1,8 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from news.db import create_db_and_table, engine, populate_table, is_table_empty
+from news.db import (
+    create_db_and_table,
+    populate_table,
+    is_table_empty,
+    get_session,
+    select_query_from_table,
+)
 from news.model import News
-from sqlmodel import Session, select
 
 
 app = FastAPI()
@@ -16,10 +21,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def get_session():
-    return Session(engine)
 
 
 def create_response(
@@ -54,10 +55,7 @@ async def health():
 @app.get("/get_news")
 async def evaluation(category: str | None = None, page: int = Query(default=1, gt=0)):
     with get_session() as session:
-        if category:
-            query = select(News).where(News.category == category.lower())
-        else:
-            query = select(News)
+        query = select_query_from_table(session, News, category)
 
         number_of_news = len(session.exec(query).all())
         page_news = session.exec(query.offset(12 * (page - 1)).limit(12)).all()
