@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from news.db import create_db_and_table, engine, populate_table, is_table_empty
 from news.model import News
@@ -22,7 +22,9 @@ def get_session():
     return Session(engine)
 
 
-def create_response(news: list, category_filter: str, current_page: int, total_pages: int):
+def create_response(
+    news: list, category_filter: str, current_page: int, total_pages: int
+):
     return {
         "total_pages": total_pages,
         "current_page": current_page,
@@ -46,28 +48,38 @@ async def home():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy as a horse"}
+    return {"status": "healthy as a healthy horse"}
 
 
 @app.get("/get_news")
-async def evaluation(category: str | None = None, page: int = 1):
+async def evaluation(
+    category: str | None = None, page: int = Query(default=1, gt=0)
+):
     with get_session() as session:
         if category:
-            news = session.exec(select(News).where(News.category == category.lower())).all()
+            news = session.exec(
+                select(News).where(News.category == category.lower())
+            ).all()
         else:
             news = session.exec(select(News)).all()
 
-    total_pages = (len(news) // 12) if len(news) % 12 == 0 else (len(news) // 12) + 1
+    full_pages, extra = divmod(len(news), 12)
+    total_pages = full_pages + bool(extra)
 
-    if int(page) == total_pages:
+    if page == total_pages:
         return create_response(
-            news[12 * (int(page) - 1) :], category, page, total_pages
+            news[12 * (page - 1):], category, page, total_pages
         )
-    elif 0 < int(page) < total_pages:
+
+    if page < total_pages:
         return create_response(
-            news[12 * (int(page) - 1) : 12 * (int(page))], category, page, total_pages
+            news[12 * (page - 1): 12 * page],
+            category,
+            page,
+            total_pages,
         )
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="page does not exist"
-        )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"page {page} does not exist",
+    )
