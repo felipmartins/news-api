@@ -52,7 +52,7 @@ async def health():
     return {"status": "healthy as a healthy horse"}
 
 
-@app.get("/get_news")
+@app.get("/news")
 async def evaluation(category: str | None = None, page: int = Query(default=1, gt=0)):
     with get_session() as session:
         query = select_query_from_table(session, News, category)
