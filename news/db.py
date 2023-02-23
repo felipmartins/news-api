@@ -12,6 +12,7 @@ engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
 def create_db_and_table():
     SQLModel.metadata.create_all(engine)
 
+
 def get_session():
     return Session(engine)
 
@@ -28,6 +29,11 @@ def populate_table(session):
 def is_table_empty(session, model):
     return session.exec(select(model)).first() is None
 
+
 def select_query_from_table(session, model, category=None):
     with session as session:
-        return select(News).where(News.category == category.lower()) if category else select(News)
+        return (
+            select(News).where(News.category == category.lower())
+            if category
+            else select(News)
+        )

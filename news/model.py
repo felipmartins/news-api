@@ -9,5 +9,3 @@ class News(SQLModel, table=True):
     content: str = Field(max_length=5000)
     category: str = Field(max_length=50)
     timestamp: str = Field(max_length=50)
-    
-
